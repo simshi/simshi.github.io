@@ -82,7 +82,7 @@ code {
 code.sourceCode {
 	color: black;
 	font-size: 1em;
-	background-color: white;
+	background-color: #f8f8f8;
 }
 table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode, table.sourceCode pre
    {

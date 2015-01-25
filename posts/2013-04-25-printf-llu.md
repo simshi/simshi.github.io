@@ -59,31 +59,26 @@ In the third `printf`, the story is similar, but `printf` tried to dereference t
 
 The stack frame of printf:
 
-+----------------------------------+
-| 4 bytes "pa", a pointer          |
-+----------------------------------+
-| 8 bytes "num" 0x0000000100000003 |
-+----------------------------------+
-| 4 bytes "a" 0x00000005           |
-+----------------------------------+
+| Variable | Value |
+|:--------------|-----------------:|
+| "pa" (4 bytes) | a pointer        |
+| "num" (8 bytes) | 0x0000000100000003 |
+| "a" (4 bytes) | 0x00000005         |
 
 Interpreted incorrectly as:
 
-+-------+--------+
-| pa    |        |
-+-------+--------+
-| "%p"  | pa:0x1 |
-+-------+--------+
-| "%lu" | num:3  |
-+-------+--------+
-| "%d"  | a:5    |
-+-------+--------+
+| Interpration | Value |
+|:-------------|-----------------:|
+| _ignored_ (4 bytes) | pointer to pa    |
+| "%p" (4 bytes) | pa  : 0x00000001 |
+| "%lu" (4 bytes) | num : 0x00000003 |
+| "%d" (4 bytes) | a   : 0x00000005 |
 
 ## Solution and Suggestion
 
 Firstly, as I mentioned in **Compiler Warnings are Your Friends**, you should fix all the compiler warnings, and turn on "-Werror" finally. Then this kind of bug would never leak to other people.
 
-And the solution is very simple, just use correct length modifiers in format instrcutions: hh, h, l, ll, etc.
+And the solution is very simple, just use correct length modifiers in format instrcutions: `hh, h, l, ll`, etc.
 
 If you're working on platform which has `<inttypes.h>`, it's better to make it cross-platform by using macros it provides:
 
