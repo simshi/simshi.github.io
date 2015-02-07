@@ -1,5 +1,6 @@
 body {
 	color: black;
+	font-family: "PT Serif",Georgia,Times,"Times New Roman",serif;
 	font-size: 16px;
 	padding: 0em 5em;
 	min-width: 780px;
@@ -78,6 +79,7 @@ code {
 	font-size: 0.8em;
 	color: #c7254e;
 	background-color: #f9f2f4;
+	padding: 1px 3px;
 }
 code.sourceCode {
 	color: black;
