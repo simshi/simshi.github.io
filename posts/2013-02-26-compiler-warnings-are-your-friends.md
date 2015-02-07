@@ -5,7 +5,7 @@ tags: compiler, c/c++
 
 ## Origin
 
-One of my collegues has posted a blog talking about a bug related with a GCC option `-fstrict-aliasing`, and someone pointed out that the compiler has already warned them about the bug in the compiling log, but that team just ignored the warning.
+One of my colleagues has posted a blog talking about a bug related with a GCC option `-fstrict-aliasing`, and someone pointed out that the compiler has already warned them about the bug in the compiling log, but that team just ignored the warning.
 
 Then you may suggest all of us should treat compiling warnings seriously, it couldn't turn into a bug, waste lots of time of many colleagues.
 
@@ -108,7 +108,7 @@ status = update_customer(customer_db,
 releaseLock(customer_entry_lock);
 ```
 
-Like above code, they appears in a very long function, bugs are growing very easily in complex logic, ang again compiler can find it for you:
+Like above code, they appears in a very long function, bugs are growing very easily in complex logic, and again compiler can find it for you:
 
 ``` c
 ../customers.c:556:11: error: variable 'parent_id' is used uninitialized whenever 'if' condition is false
@@ -133,4 +133,5 @@ If the first if-statement evaluated to false, then the variable `parent_id` woul
 - [What's the difference between 'foo()' and 'foo(void)'?](/posts/2013-01-13-foo-and-foo-void.html)
 - [Format Types Mismatch in printf/fprintf](/posts/2013-04-25-printf-llu.html)
 - [Do I need to include .h file in .c with same name?](2014-02-24-include-header.html)
+- [On Code Optimization](/posts/2014-09-01-code-optimization.html)
 
