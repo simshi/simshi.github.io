@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <title>Self-Cultivation of A Coder - On Code Optimization</title>
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+    </head>
+    <body>
+        <div id="header">
+            <div id="logo">
+                <a href="../">Self-Cultivation of A Coder</a>
+            </div>
+            <div id="navigation">
+                <a href="../about.html">About</a>
+                <a href="../archive.html">Archive</a>
+            </div>
+        </div>
+
+        <div id="content">
+            <h1>On Code Optimization</h1>
+
+            <div class="info">
+	Posted on September  1, 2014
+	
+</div>
+
+<h2 id="software-exorcism">Software Exorcism</h2>
+<p>Recent months, Eric, Harry and I has translated a book, <a href="http://www.amazon.com/Software-Exorcism-Handbook-Debugging-Optimizing/dp/1590592344">Software Exorcism</a>, into <a href="http://book.douban.com/subject/25900304/">Chinese version</a>, and here is the <a href="http://zhangliaoyuan.me/blog/2014/02/24/translating-preface-of-software-exorcism/">translators’ preface written by Eric</a>. It’s a book on debugging and optimizing legacy code, but in this blog, I’ll only talk about a little thought on optimization.</p>
+<h2 id="branch-elimination">Branch Elimination</h2>
+<p>Check the below C code, it has a if-else statement which would created a branching structure in machine code eventually:</p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="ot">#include &lt;string.h&gt;</span>
+
+<span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">char</span> BOOLEAN;
+<span class="ot">#define TRUE 1</span>
+<span class="ot">#define FALSE 0</span>
+
+
+BOOLEAN editName(<span class="dt">char</span> *name)
+{
+    <span class="kw">if</span> (strlen(name)&gt;<span class="dv">0</span>) {
+        <span class="kw">return</span>(TRUE);
+    } <span class="kw">else</span> {
+        <span class="kw">return</span>(FALSE);
+    }
+}</code></pre>
+<p>Let’s compile it by gcc on a x86 platform (in fact, I’m using <a href="https://gcc.godbolt.org/">gccbolt</a>, on which you can try different platforms):</p>
+<pre class="sourceCode nasm"><code class="sourceCode nasm">editName(char*):
+	pushq	<span class="ot">%rbp</span>
+	<span class="kw">movq</span>	<span class="ot">%rsp, %rbp</span>
+	<span class="kw">movq</span>	<span class="ot">%rdi, -8(%rbp)</span>
+	<span class="kw">movq</span>	-<span class="dv">8</span>(<span class="ot">%rbp), %rax</span>
+	movzbl	(<span class="ot">%rax), %eax</span>
+	testb	<span class="ot">%al, %al</span>
+	<span class="kw">je</span>	.L2
+	movl<span class="bn">	$1, </span><span class="ot">%eax</span>
+	<span class="kw">jmp</span>	.L3
+<span class="fu">.L2:</span>
+	movl<span class="bn">	$0, </span><span class="ot">%eax</span>
+<span class="fu">.L3:</span>
+	popq	<span class="ot">%rbp</span>
+	<span class="kw">ret</span></code></pre>
+<p>As you can see, there is a branch in above asm code, <code>je .L2</code>, seems it’s a optimization point if we really despaired in performance target. So the book author suggested to optimize it as below:</p>
+<pre class="sourceCode c"><code class="sourceCode c">BOOLEAN editNameWithoutBranch(<span class="dt">char</span> *name)
+{
+    <span class="kw">return</span>(strlen(name));
+}</code></pre>
+<p>Let’s check the result on the same platform:</p>
+<pre class="sourceCode nasm"><code class="sourceCode nasm">editNameWithoutBranch(char*):
+	pushq	<span class="ot">%rbp</span>
+	<span class="kw">movq</span>	<span class="ot">%rsp, %rbp</span>
+	subq<span class="bn">	$16, </span><span class="ot">%rsp</span>
+	<span class="kw">movq</span>	<span class="ot">%rdi, -8(%rbp)</span>
+	<span class="kw">movq</span>	-<span class="dv">8</span>(<span class="ot">%rbp), %rax</span>
+	<span class="kw">movq</span>	<span class="ot">%rax, %rdi</span>
+	<span class="kw">call</span>	strlen
+	<span class="kw">leave</span>
+	<span class="kw">ret</span></code></pre>
+<p>What’s changed here? We can see there is no branching instruction in the asm code generated from <code>editNameWithoutBranch</code>, but (here comes the truth) there is a function call on <code>strlen</code>, which is eliminated in the if-else version. For if-else version, gcc is smart enough to generated some code as <code>if (name[0] == 0)</code> (<code>testb %al %al</code>), instead of calling the <code>strlen</code>.</p>
+<p>So, which version would be better in performance? It depends, different platforms (mostly impacted by CPU architecture) give different results, but at least we know, optimizing at such a low lever may not a wise thing to do, <strong>compiler can do smart things for us, and usually it’s better than most programmers at most time</strong>.</p>
+<p>Now, to get the most out of compiler intelligence, let’s try <code>-O2</code> for above code, I got:</p>
+<pre class="sourceCode nasm"><code class="sourceCode nasm">editName(char*):
+	cmpb<span class="bn">	$0, </span>(<span class="ot">%rdi); compare name[0] with '\0'</span>
+	<span class="kw">setne</span>	<span class="ot">%al</span>
+	<span class="kw">ret</span>
+
+editNameWithoutBranch(char*):
+	subq<span class="bn">	$8, </span><span class="ot">%rsp</span>
+	<span class="kw">call</span>	strlen
+	addq<span class="bn">	$8, </span><span class="ot">%rsp</span>
+	<span class="kw">ret</span></code></pre>
+<p>This time, you can figure out the winner easily, <code>return name[0] != '\0';</code> is definitely faster than <code>return strlen(name);</code>.</p>
+<h2 id="but-why">But Why?</h2>
+<p>The reason why compiler can optimize away the calling to <code>strlen</code> in the <code>editName</code> lies in the definition of <code>TRUE</code> and <code>FALSE</code>, as you can see, they’re just constant values, on the contrary, <code>editNameWithoutBranch</code> returns a type of <code>BOOLEAN</code> which is type-defined as <code>unsigned char</code>, which various from 0 to 255, so the compiler can’t eliminate the calling of <code>strlen</code>.</p>
+<p>If we change the return type to real <code>boolean</code>, see what would happen:</p>
+<pre class="sourceCode c"><code class="sourceCode c">bool editNameWithBoolean(<span class="dt">char</span> *name)
+{
+  <span class="kw">return</span> strlen(name);
+}</code></pre>
+<p>Compile it with <code>gcc -std=c99 -O2</code>:</p>
+<pre class="sourceCode nasm"><code class="sourceCode nasm">editNameWithBoolean(char*):
+	cmpb<span class="bn">	$0, </span>(<span class="ot">%rdi)</span>
+	<span class="kw">setne</span>	<span class="ot">%al</span>
+	<span class="kw">ret</span></code></pre>
+<p>It’s identical with the if-else version in <code>-O2</code>, so, that’s it!</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>Like the book author mentioned in his book, I think finding/using a better algorithm (strategy) is more important things for a programmer to do, because low-level optimization like the above case is a territory of compilers, it’s where compilers are shining, usually doing bettering than most programmers. What compiler can’t do better is knowing the purpose of your program, so, <strong>as a rational programmer, we’d better to invest our energy on high-level optimization like algorithms or code designs when it comes to optimize code performance</strong>.</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li>Check out compiling tactics at <a href="../posts/2013-02-26-compiler-warnings-are-your-friends.html">Compiler Warnings are Your Friends</a>.</li>
+</ul>
+
+
+        </div>
+        <div id="footer">
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <title>Self-Cultivation of A Coder - Format Types Mismatch in printf/fprintf</title>
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+    </head>
+    <body>
+        <div id="header">
+            <div id="logo">
+                <a href="../">Self-Cultivation of A Coder</a>
+            </div>
+            <div id="navigation">
+                <a href="../about.html">About</a>
+                <a href="../archive.html">Archive</a>
+            </div>
+        </div>
+
+        <div id="content">
+            <h1>Format Types Mismatch in printf/fprintf</h1>
+
+            <div class="info">
+	Posted on April 25, 2013
+	
+</div>
+
+<p>This is one blog of the <a href="../posts/2013-02-26-compiler-warnings-are-your-friends.html">Compiler Warnings are Your Friends</a> series.</p>
+<h2 id="demonstrate-code">Demonstrate Code</h2>
+<p>One of my colleagues met a crash issue of his code, so he consulted me, below code are simplified for the key point only.</p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="ot">#include &lt;stdio.h&gt;</span>
+
+<span class="dt">int</span> main() {
+    <span class="dt">unsigned</span> <span class="dt">long</span> <span class="dt">long</span> num = 4294967299ull; <span class="co">/*(0x100000003)*/</span>
+    <span class="dt">unsigned</span> <span class="dt">int</span> a = <span class="dv">5</span>;
+    <span class="dt">const</span> <span class="dt">char</span>* pa = <span class="st">&quot;pa&quot;</span>;
+
+    printf(<span class="st">&quot;size:%d,llu:%llu</span><span class="ch">\n</span><span class="st">&quot;</span>, <span class="kw">sizeof</span>(num), num);
+    printf(<span class="st">&quot;a:%d,num:%lu,pa:%p</span><span class="ch">\n</span><span class="st">&quot;</span>, a, num, pa);
+    printf(<span class="st">&quot;a:%d,num:%lu,pa:%s</span><span class="ch">\n</span><span class="st">&quot;</span>, a, num, pa);
+
+    <span class="kw">return</span> <span class="dv">0</span>;
+}</code></pre>
+<h2 id="the-compiler-warning">The Compiler Warning</h2>
+<p>Let’s compile the above code:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash">$ <span class="kw">gcc</span> -o llu llu.c
+<span class="kw">llu.c</span>:9:5: warning: format ‘%lu’ expects argument of type ‘long unsigned int’,
+<span class="kw">but</span> argument 3 has type ‘long long unsigned int’ [-Wformat]</code></pre>
+<p>It means we provided a <code>long long unsigned int</code> argument, but use “%lu” to format it in printf. Nevertheless, the build is successful. (<em>In fact, there are more than one mistake within above code, and you’ll get more warnings if compiled it with a modern compiler, e.g. use <code>%d</code> to print the result of sizeof, which is typed as <code>size_t</code>. But, let’s focuse on the <code>llu</code> issue first</em>);</p>
+<h3 id="result-of-running-it">Result of Running it</h3>
+<p>On a x86 (little-endian) PC, I got (<em>Probably you’ll get different result on a 64bit machine</em>):</p>
+<pre class="sourceCode bash"><code class="sourceCode bash">$ <span class="kw">./llu</span>
+<span class="kw">size</span>:8,llu:4294967299
+<span class="kw">a</span>:5,num:3,pa:0x1
+<span class="kw">/bin</span>/bash: <span class="kw">line</span> 1:  3440
+<span class="kw">Segmentation</span> fault      (core dumped) <span class="kw">./llu</span></code></pre>
+<p>As you can see, the value of num can be printed correctly by “%llu” in the first printf, but in second printf its value changed to 3 instead of 4294967299, and the followed <code>pa</code> got a value <code>0x1</code> (obviously it’s a wrong pointer value). Even worse, the third printf caused a ‘Segmentation fault’.</p>
+<h2 id="analysis">Analysis</h2>
+<p>In the second <code>printf</code>, we use “%lu” in the format string, so <code>printf</code> grabbed 4 low bytes (<code>0x00000003</code>) from <code>num</code>, i.e. it was truncated, hence we got “num:3”. Then “%p” grabbed the left 4 high bytes of num (<code>0x00000001</code>), printed it as a pointer value, so we got “pa:0x1”.</p>
+<p>In the third <code>printf</code>, the story is similar, but <code>printf</code> tried to dereference the invalid pointer address (i.e. “0x1”) when it met “%s”, so the program crashed.</p>
+<p>The stack frame of printf:</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Variable</th>
+<th align="right">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">“pa” (4 bytes)</td>
+<td align="right">a pointer</td>
+</tr>
+<tr class="even">
+<td align="left">“num” (8 bytes)</td>
+<td align="right">0x0000000100000003</td>
+</tr>
+<tr class="odd">
+<td align="left">“a” (4 bytes)</td>
+<td align="right">0x00000005</td>
+</tr>
+</tbody>
+</table>
+<p>Interpreted incorrectly as:</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Interpration</th>
+<th align="right">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left"><em>ignored</em> (4 bytes)</td>
+<td align="right">pointer to pa </td>
+</tr>
+<tr class="even">
+<td align="left">“%p” (4 bytes)</td>
+<td align="right">pa : 0x00000001</td>
+</tr>
+<tr class="odd">
+<td align="left">“%lu” (4 bytes)</td>
+<td align="right">num : 0x00000003</td>
+</tr>
+<tr class="even">
+<td align="left">“%d” (4 bytes)</td>
+<td align="right">a : 0x00000005</td>
+</tr>
+</tbody>
+</table>
+<h2 id="solution-and-suggestion">Solution and Suggestion</h2>
+<p>Firstly, as I mentioned in <strong>Compiler Warnings are Your Friends</strong>, you should fix all the compiler warnings, and turn on “-Werror” finally. Then this kind of bug would never leak to other people.</p>
+<p>And the solution is very simple, just use correct length modifiers in format instrcutions: <code>hh, h, l, ll</code>, etc.</p>
+<p>If you’re working on platform which has <code>&lt;inttypes.h&gt;</code>, it’s better to make it cross-platform by using macros it provides:</p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="ot">#include &lt;inttypes.h&gt;</span>
+
+<span class="dt">int64_t</span> it;
+<span class="dt">uint64_t</span> ut;
+
+printf(<span class="st">&quot;%&quot;</span> PRId64 <span class="st">&quot;n&quot;</span>, it);
+printf(<span class="st">&quot;%&quot;</span> PRIu64 <span class="st">&quot;n&quot;</span>, ut);</code></pre>
+<p>Please find more details about <code>inttypes.h</code> at <a href="http://stackoverflow.com/questions/6299323/good-introduction-to-inttypes-h">stackoverflow</a>.</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="../posts/2013-02-26-compiler-warnings-are-your-friends.html">Compiler Warnings are Your Friends</a></li>
+</ul>
+
+
+        </div>
+        <div id="footer">
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+        </div>
+    </body>
+</html>

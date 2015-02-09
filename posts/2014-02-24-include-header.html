@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <title>Self-Cultivation of A Coder - Do I need to include .h file in .c with same name?</title>
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+    </head>
+    <body>
+        <div id="header">
+            <div id="logo">
+                <a href="../">Self-Cultivation of A Coder</a>
+            </div>
+            <div id="navigation">
+                <a href="../about.html">About</a>
+                <a href="../archive.html">Archive</a>
+            </div>
+        </div>
+
+        <div id="content">
+            <h1>Do I need to include .h file in .c with same name?</h1>
+
+            <div class="info">
+	Posted on February 24, 2014
+	
+</div>
+
+<p>This is also a blog of the <a href="../posts/2013-02-26-compiler-warnings-are-your-friends.html">Compiler Warnings are Your Friends</a> series.</p>
+<h2 id="the-problem">The Problem</h2>
+<p><code>client.c</code> is using a function <code>int foo(int a)</code>, which is implemented in <code>module.c</code>, and declared in <code>module.h</code>. It’s obvious that <code>client.c</code> must include <code>module.h</code>, otherwise the compiler would complain about undeclared <code>foo()</code>, but what is not so obvious to many engineers: shall I include module.h in module.c?</p>
+<div class="figure">
+<img src="../images/module_question.gif" />
+
+</div>
+<p>“It’s not needed if module.c doesn’t use structures/types defined in module.h.”, someone would say.</p>
+<h2 id="case-study">Case Study</h2>
+<p>We don’t like gamble, let’s try the above example, say we have 3 files, <code>module.c</code> doesn’t include <code>module.h</code> here:</p>
+<pre class="sourceCode c"><code class="sourceCode c">$ cat -n module.c
+ <span class="dv">1</span>  <span class="co">//#include &quot;module.h&quot;</span>
+ <span class="dv">2</span>
+ <span class="dv">3</span>  <span class="dt">int</span> foo(<span class="dt">int</span> a, <span class="dt">int</span> b)
+ <span class="dv">4</span>  {
+ <span class="dv">5</span>      <span class="kw">return</span> a/b;
+ <span class="dv">6</span>  }
+
+$ cat -n module.h
+ <span class="dv">1</span>  #ifndef _MODULE_H_
+ <span class="dv">2</span>  #define _MODULE_H_
+ <span class="dv">3</span>
+ <span class="dv">4</span>  <span class="dt">int</span> foo(<span class="dt">int</span> a);
+ <span class="dv">5</span>
+ <span class="dv">6</span>  #endif
+
+$ cat -n client.c
+ <span class="dv">1</span>  #include &lt;stdio.h&gt;
+ <span class="dv">2</span>
+ <span class="dv">3</span>  #include <span class="st">&quot;module.h&quot;</span>
+ <span class="dv">4</span>
+ <span class="dv">5</span>  <span class="dt">int</span> main(<span class="dt">void</span>)
+ <span class="dv">6</span>  {
+ <span class="dv">7</span>      <span class="dt">int</span> i=<span class="dv">3</span>;
+ <span class="dv">8</span>      printf(<span class="st">&quot;foo(%d): %d</span><span class="ch">\n</span><span class="st">&quot;</span>, i, foo(i));
+ <span class="dv">9</span>
+<span class="dv">10</span>      <span class="kw">return</span> <span class="dv">0</span>;
+<span class="dv">11</span>  }</code></pre>
+<p>Now let’s build them and execute the output:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash">$ <span class="kw">gcc</span> -g -Wall -Wextra -c -o client.o client.c
+$ <span class="kw">gcc</span> -g -Wall -Wextra -c -o module.o module.c
+$ <span class="kw">gcc</span> -o output client.o module.o
+$ <span class="kw">./output</span>
+$ <span class="kw">foo</span>(3)<span class="kw">:</span> 0</code></pre>
+<p>Do you see something very bad are happening? The definition and declaration of foo are different but GCC build them without any complain! i.e. This code has just fooled the compiler and the linker, but the worst part happens at runtime, while it didn’t crash to warn us, instead, it just sneaked into the stack, grabbed a random value as its second argument, <code>int b</code>, then left us with a surprising output! (<em>Well, it might crash on some environment, if foo got a zero as <code>int b</code>, the behavior is undefined</em>).</p>
+<p>Now, let’s include <code>module.h</code> in <code>module.c</code>, try what we’d find this time:</p>
+<pre class="sourceCode c"><code class="sourceCode c">$ cat -n module.c
+ <span class="dv">1</span>  #include <span class="st">&quot;module.h&quot;</span>
+ <span class="dv">2</span>
+ <span class="dv">3</span>  <span class="dt">int</span> foo(<span class="dt">int</span> a, <span class="dt">int</span> b)
+ <span class="dv">4</span>  {
+ <span class="dv">5</span>      <span class="kw">return</span> a/b;
+ <span class="dv">6</span>  }</code></pre>
+<pre class="sourceCode bash"><code class="sourceCode bash">$ <span class="kw">cc</span>  -g -Wall -Wextra  -c -o module.o module.c
+<span class="kw">module.c</span>:4: error: conflicting types for ‘foo’
+<span class="kw">module.h</span>:4: error: previous declaration of ‘foo’ was here</code></pre>
+<p>This one line including created an explicit relationship between <code>module.c</code> and <code>module.h</code>, so GCC figured out that mistake and failed the compiling, that’s what we’d eagerly expected, rather than a bug found by feature test, system test, or even by our beloved customers, right?</p>
+<h2 id="answer">Answer</h2>
+<p>So, now, your questions should have melted away, with the below figure shows what you shall do, and you’ve already understood the reason behind it:</p>
+<div class="figure">
+<img src="../images/module.gif" />
+
+</div>
+<p>BTW, grabing some declarations by something like <code>extern int foo(int a);</code> should be considerated harmful too, it just like a dialect of this kind of mistakes we’re trying to avoid, because the extern stuff might be out of date, it would also breaks the relationship among functions’ declarations and definitions.</p>
+<h2 id="solution">Solution</h2>
+<p>But that only leads us to another trouble: how can I find all of these potential bugs, i.e <strong>‘definitions without declarations’</strong> in my code? It’s quite a lot of tedious hours to find them, right?</p>
+<p>Praying for a salvation? Here it is:</p>
+<blockquote>
+<p>Compiler warnings are your friends.</p>
+</blockquote>
+<p>In this case, GCC has an option <code>-Wmissing-prototypes</code> (or <code>-Wmissing-declarations</code>), which can find exactly such kind of carelessness, let’s comment the include again and compile <code>module.c</code> with this option:</p>
+<pre class="sourceCode c"><code class="sourceCode c">$ cat -n module.c
+ <span class="dv">1</span>  <span class="co">//#include &quot;module.h&quot;</span>
+ <span class="dv">2</span>
+ <span class="dv">3</span>  <span class="dt">int</span> foo(<span class="dt">int</span> a, <span class="dt">int</span> b)
+ <span class="dv">4</span>  {
+ <span class="dv">5</span>      <span class="kw">return</span> a/b;
+ <span class="dv">6</span>  }</code></pre>
+<pre class="sourceCode bash"><code class="sourceCode bash">$ <span class="kw">gcc</span> -c -o module.o -Wall -Wextra -Wmissing-declarations module.c
+<span class="kw">module.c</span>:4: warning: no previous declaration for ‘foo’</code></pre>
+<p>See? GCC did all the dirty works for you!</p>
+<h2 id="reference">Reference:</h2>
+<ul>
+<li><a href="../posts/2013-02-26-compiler-warnings-are-your-friends.html">Compiler Warnings are Your Friends</a></li>
+</ul>
+
+
+        </div>
+        <div id="footer">
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+        </div>
+    </body>
+</html>

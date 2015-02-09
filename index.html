@@ -1,0 +1,548 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <title>Self-Cultivation of A Coder - Home</title>
+        <link rel="stylesheet" type="text/css" href="./css/default.css" />
+    </head>
+    <body>
+        <div id="header">
+            <div id="logo">
+                <a href="./">Self-Cultivation of A Coder</a>
+            </div>
+            <div id="navigation">
+                <a href="./about.html">About</a>
+                <a href="./archive.html">Archive</a>
+            </div>
+        </div>
+
+        <div id="content">
+            <h1>Home</h1>
+
+            <img src="images/haskell-logo.png" style="float: right; margin: 10px;" />
+
+<ul>
+	
+	<li>
+		<a href="./posts/2015-01-11-zhuangbility.html">The Many Adventures of Zhuangbility</a> - January 11, 2015
+		<p>
+		
+			<h1 id="origin">Origin</h1>
+<p>I should have started this blog long long ago, but failed. Last week, Eric asked Zhang Yu and me to actually do something, to record some thoughts and funny things, so now, here it is.</p>
+<h1 id="hakyll">Hakyll</h1>
+<p>In fact, I have tried Hakyll once two years ago, but gave up quickly, due to my laziness. :p Nevertheless, Haskel is good for zhuangbility, so I’m back!</p>
+<h1 id="self-cultivation-of-me-a-coder">Self-Cultivation of me, a coder</h1>
+<p>Yes, it’s a blog of a coder, is this a good title?</p>
+<h1 id="test-css">Test CSS:</h1>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="ch">from</span> functools <span class="ch">import</span> <span class="dt">reduce</span>
+
+_Meta = ((<span class="dv">1000</span>, <span class="st">'M'</span>),
+         (<span class="dv">900</span>, <span class="st">'CM'</span>), (<span class="dv">500</span>, <span class="st">'D'</span>), (<span class="dv">400</span>, <span class="st">'CD'</span>), (<span class="dv">100</span>, <span class="st">'C'</span>),
+         (<span class="dv">90</span>, <span class="st">'XC'</span>), (<span class="dv">50</span>,<span class="st">'L'</span>), (<span class="dv">40</span>, <span class="st">'XL'</span>), (<span class="dv">10</span>, <span class="st">'X'</span>),
+         (<span class="dv">9</span>, <span class="st">'IX'</span>), (<span class="dv">5</span>, <span class="st">'V'</span>), (<span class="dv">4</span>, <span class="st">'IV'</span>), (<span class="dv">1</span>, <span class="st">'I'</span>))
+
+<span class="kw">def</span> romanize(number):
+    <span class="kw">def</span> <span class="dt">next</span>(result, remain, radix, symbol):
+        <span class="kw">while</span> remain &gt;= radix:
+            result, remain = (result + symbol, remain - radix)
+        <span class="kw">return</span> result, remain
+
+    r, _ = <span class="dt">reduce</span>(<span class="kw">lambda</span> r, m:<span class="dt">next</span>(*(r+m)), _Meta, (<span class="st">''</span>, number))
+
+    <span class="kw">return</span> r</code></pre>
+<h1 id="references">References</h1>
+<ul>
+<li><a href="http://reichertbrothers.com/blog/posts/2014-04-08-hakyll-teasers.html">Show content of posts in index.html by teaser</a></li>
+<li><a href="http://javran.github.io/posts/2014-03-01-add-tags-to-your-hakyll-blog.html">Enable tags</a></li>
+</ul>
+		
+		</p>
+	</li>
+	
+	<li>
+		<a href="./posts/2014-09-01-code-optimization.html">On Code Optimization</a> - September  1, 2014
+		<p>
+		
+			<h2 id="software-exorcism">Software Exorcism</h2>
+<p>Recent months, Eric, Harry and I has translated a book, <a href="http://www.amazon.com/Software-Exorcism-Handbook-Debugging-Optimizing/dp/1590592344">Software Exorcism</a>, into <a href="http://book.douban.com/subject/25900304/">Chinese version</a>, and here is the <a href="http://zhangliaoyuan.me/blog/2014/02/24/translating-preface-of-software-exorcism/">translators’ preface written by Eric</a>. It’s a book on debugging and optimizing legacy code, but in this blog, I’ll only talk about a little thought on optimization.</p>
+<h2 id="branch-elimination">Branch Elimination</h2>
+<p>Check the below C code, it has a if-else statement which would created a branching structure in machine code eventually:</p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="ot">#include &lt;string.h&gt;</span>
+
+<span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">char</span> BOOLEAN;
+<span class="ot">#define TRUE 1</span>
+<span class="ot">#define FALSE 0</span>
+
+
+BOOLEAN editName(<span class="dt">char</span> *name)
+{
+    <span class="kw">if</span> (strlen(name)&gt;<span class="dv">0</span>) {
+        <span class="kw">return</span>(TRUE);
+    } <span class="kw">else</span> {
+        <span class="kw">return</span>(FALSE);
+    }
+}</code></pre>
+<p>Let’s compile it by gcc on a x86 platform (in fact, I’m using <a href="https://gcc.godbolt.org/">gccbolt</a>, on which you can try different platforms):</p>
+<pre class="sourceCode nasm"><code class="sourceCode nasm">editName(char*):
+	pushq	<span class="ot">%rbp</span>
+	<span class="kw">movq</span>	<span class="ot">%rsp, %rbp</span>
+	<span class="kw">movq</span>	<span class="ot">%rdi, -8(%rbp)</span>
+	<span class="kw">movq</span>	-<span class="dv">8</span>(<span class="ot">%rbp), %rax</span>
+	movzbl	(<span class="ot">%rax), %eax</span>
+	testb	<span class="ot">%al, %al</span>
+	<span class="kw">je</span>	.L2
+	movl<span class="bn">	$1, </span><span class="ot">%eax</span>
+	<span class="kw">jmp</span>	.L3
+<span class="fu">.L2:</span>
+	movl<span class="bn">	$0, </span><span class="ot">%eax</span>
+<span class="fu">.L3:</span>
+	popq	<span class="ot">%rbp</span>
+	<span class="kw">ret</span></code></pre>
+<p>As you can see, there is a branch in above asm code, <code>je .L2</code>, seems it’s a optimization point if we really despaired in performance target. So the book author suggested to optimize it as below:</p>
+<pre class="sourceCode c"><code class="sourceCode c">BOOLEAN editNameWithoutBranch(<span class="dt">char</span> *name)
+{
+    <span class="kw">return</span>(strlen(name));
+}</code></pre>
+<p>Let’s check the result on the same platform:</p>
+<pre class="sourceCode nasm"><code class="sourceCode nasm">editNameWithoutBranch(char*):
+	pushq	<span class="ot">%rbp</span>
+	<span class="kw">movq</span>	<span class="ot">%rsp, %rbp</span>
+	subq<span class="bn">	$16, </span><span class="ot">%rsp</span>
+	<span class="kw">movq</span>	<span class="ot">%rdi, -8(%rbp)</span>
+	<span class="kw">movq</span>	-<span class="dv">8</span>(<span class="ot">%rbp), %rax</span>
+	<span class="kw">movq</span>	<span class="ot">%rax, %rdi</span>
+	<span class="kw">call</span>	strlen
+	<span class="kw">leave</span>
+	<span class="kw">ret</span></code></pre>
+<p>What’s changed here? We can see there is no branching instruction in the asm code generated from <code>editNameWithoutBranch</code>, but (here comes the truth) there is a function call on <code>strlen</code>, which is eliminated in the if-else version. For if-else version, gcc is smart enough to generated some code as <code>if (name[0] == 0)</code> (<code>testb %al %al</code>), instead of calling the <code>strlen</code>.</p>
+<p>So, which version would be better in performance? It depends, different platforms (mostly impacted by CPU architecture) give different results, but at least we know, optimizing at such a low lever may not a wise thing to do, <strong>compiler can do smart things for us, and usually it’s better than most programmers at most time</strong>.</p>
+<p>Now, to get the most out of compiler intelligence, let’s try <code>-O2</code> for above code, I got:</p>
+<pre class="sourceCode nasm"><code class="sourceCode nasm">editName(char*):
+	cmpb<span class="bn">	$0, </span>(<span class="ot">%rdi); compare name[0] with '\0'</span>
+	<span class="kw">setne</span>	<span class="ot">%al</span>
+	<span class="kw">ret</span>
+
+editNameWithoutBranch(char*):
+	subq<span class="bn">	$8, </span><span class="ot">%rsp</span>
+	<span class="kw">call</span>	strlen
+	addq<span class="bn">	$8, </span><span class="ot">%rsp</span>
+	<span class="kw">ret</span></code></pre>
+<p>This time, you can figure out the winner easily, <code>return name[0] != '\0';</code> is definitely faster than <code>return strlen(name);</code>.</p>
+<h2 id="but-why">But Why?</h2>
+<p>The reason why compiler can optimize away the calling to <code>strlen</code> in the <code>editName</code> lies in the definition of <code>TRUE</code> and <code>FALSE</code>, as you can see, they’re just constant values, on the contrary, <code>editNameWithoutBranch</code> returns a type of <code>BOOLEAN</code> which is type-defined as <code>unsigned char</code>, which various from 0 to 255, so the compiler can’t eliminate the calling of <code>strlen</code>.</p>
+<p>If we change the return type to real <code>boolean</code>, see what would happen:</p>
+<pre class="sourceCode c"><code class="sourceCode c">bool editNameWithBoolean(<span class="dt">char</span> *name)
+{
+  <span class="kw">return</span> strlen(name);
+}</code></pre>
+<p>Compile it with <code>gcc -std=c99 -O2</code>:</p>
+<pre class="sourceCode nasm"><code class="sourceCode nasm">editNameWithBoolean(char*):
+	cmpb<span class="bn">	$0, </span>(<span class="ot">%rdi)</span>
+	<span class="kw">setne</span>	<span class="ot">%al</span>
+	<span class="kw">ret</span></code></pre>
+<p>It’s identical with the if-else version in <code>-O2</code>, so, that’s it!</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>Like the book author mentioned in his book, I think finding/using a better algorithm (strategy) is more important things for a programmer to do, because low-level optimization like the above case is a territory of compilers, it’s where compilers are shining, usually doing bettering than most programmers. What compiler can’t do better is knowing the purpose of your program, so, <strong>as a rational programmer, we’d better to invest our energy on high-level optimization like algorithms or code designs when it comes to optimize code performance</strong>.</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li>Check out compiling tactics at <a href="./posts/2013-02-26-compiler-warnings-are-your-friends.html">Compiler Warnings are Your Friends</a>.</li>
+</ul>
+		
+		</p>
+	</li>
+	
+	<li>
+		<a href="./posts/2014-02-24-include-header.html">Do I need to include .h file in .c with same name?</a> - February 24, 2014
+		<p>
+		
+			<p>This is also a blog of the <a href="./posts/2013-02-26-compiler-warnings-are-your-friends.html">Compiler Warnings are Your Friends</a> series.</p>
+<h2 id="the-problem">The Problem</h2>
+<p><code>client.c</code> is using a function <code>int foo(int a)</code>, which is implemented in <code>module.c</code>, and declared in <code>module.h</code>. It’s obvious that <code>client.c</code> must include <code>module.h</code>, otherwise the compiler would complain about undeclared <code>foo()</code>, but what is not so obvious to many engineers: shall I include module.h in module.c?</p>
+<div class="figure">
+<img src="./images/module_question.gif" />
+
+</div>
+<p>“It’s not needed if module.c doesn’t use structures/types defined in module.h.”, someone would say.</p>
+<h2 id="case-study">Case Study</h2>
+<p>We don’t like gamble, let’s try the above example, say we have 3 files, <code>module.c</code> doesn’t include <code>module.h</code> here:</p>
+<pre class="sourceCode c"><code class="sourceCode c">$ cat -n module.c
+ <span class="dv">1</span>  <span class="co">//#include &quot;module.h&quot;</span>
+ <span class="dv">2</span>
+ <span class="dv">3</span>  <span class="dt">int</span> foo(<span class="dt">int</span> a, <span class="dt">int</span> b)
+ <span class="dv">4</span>  {
+ <span class="dv">5</span>      <span class="kw">return</span> a/b;
+ <span class="dv">6</span>  }
+
+$ cat -n module.h
+ <span class="dv">1</span>  #ifndef _MODULE_H_
+ <span class="dv">2</span>  #define _MODULE_H_
+ <span class="dv">3</span>
+ <span class="dv">4</span>  <span class="dt">int</span> foo(<span class="dt">int</span> a);
+ <span class="dv">5</span>
+ <span class="dv">6</span>  #endif
+
+$ cat -n client.c
+ <span class="dv">1</span>  #include &lt;stdio.h&gt;
+ <span class="dv">2</span>
+ <span class="dv">3</span>  #include <span class="st">&quot;module.h&quot;</span>
+ <span class="dv">4</span>
+ <span class="dv">5</span>  <span class="dt">int</span> main(<span class="dt">void</span>)
+ <span class="dv">6</span>  {
+ <span class="dv">7</span>      <span class="dt">int</span> i=<span class="dv">3</span>;
+ <span class="dv">8</span>      printf(<span class="st">&quot;foo(%d): %d</span><span class="ch">\n</span><span class="st">&quot;</span>, i, foo(i));
+ <span class="dv">9</span>
+<span class="dv">10</span>      <span class="kw">return</span> <span class="dv">0</span>;
+<span class="dv">11</span>  }</code></pre>
+<p>Now let’s build them and execute the output:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash">$ <span class="kw">gcc</span> -g -Wall -Wextra -c -o client.o client.c
+$ <span class="kw">gcc</span> -g -Wall -Wextra -c -o module.o module.c
+$ <span class="kw">gcc</span> -o output client.o module.o
+$ <span class="kw">./output</span>
+$ <span class="kw">foo</span>(3)<span class="kw">:</span> 0</code></pre>
+<p>Do you see something very bad are happening? The definition and declaration of foo are different but GCC build them without any complain! i.e. This code has just fooled the compiler and the linker, but the worst part happens at runtime, while it didn’t crash to warn us, instead, it just sneaked into the stack, grabbed a random value as its second argument, <code>int b</code>, then left us with a surprising output! (<em>Well, it might crash on some environment, if foo got a zero as <code>int b</code>, the behavior is undefined</em>).</p>
+<p>Now, let’s include <code>module.h</code> in <code>module.c</code>, try what we’d find this time:</p>
+<pre class="sourceCode c"><code class="sourceCode c">$ cat -n module.c
+ <span class="dv">1</span>  #include <span class="st">&quot;module.h&quot;</span>
+ <span class="dv">2</span>
+ <span class="dv">3</span>  <span class="dt">int</span> foo(<span class="dt">int</span> a, <span class="dt">int</span> b)
+ <span class="dv">4</span>  {
+ <span class="dv">5</span>      <span class="kw">return</span> a/b;
+ <span class="dv">6</span>  }</code></pre>
+<pre class="sourceCode bash"><code class="sourceCode bash">$ <span class="kw">cc</span>  -g -Wall -Wextra  -c -o module.o module.c
+<span class="kw">module.c</span>:4: error: conflicting types for ‘foo’
+<span class="kw">module.h</span>:4: error: previous declaration of ‘foo’ was here</code></pre>
+<p>This one line including created an explicit relationship between <code>module.c</code> and <code>module.h</code>, so GCC figured out that mistake and failed the compiling, that’s what we’d eagerly expected, rather than a bug found by feature test, system test, or even by our beloved customers, right?</p>
+<h2 id="answer">Answer</h2>
+<p>So, now, your questions should have melted away, with the below figure shows what you shall do, and you’ve already understood the reason behind it:</p>
+<div class="figure">
+<img src="./images/module.gif" />
+
+</div>
+<p>BTW, grabing some declarations by something like <code>extern int foo(int a);</code> should be considerated harmful too, it just like a dialect of this kind of mistakes we’re trying to avoid, because the extern stuff might be out of date, it would also breaks the relationship among functions’ declarations and definitions.</p>
+<h2 id="solution">Solution</h2>
+<p>But that only leads us to another trouble: how can I find all of these potential bugs, i.e <strong>‘definitions without declarations’</strong> in my code? It’s quite a lot of tedious hours to find them, right?</p>
+<p>Praying for a salvation? Here it is:</p>
+<blockquote>
+<p>Compiler warnings are your friends.</p>
+</blockquote>
+<p>In this case, GCC has an option <code>-Wmissing-prototypes</code> (or <code>-Wmissing-declarations</code>), which can find exactly such kind of carelessness, let’s comment the include again and compile <code>module.c</code> with this option:</p>
+<pre class="sourceCode c"><code class="sourceCode c">$ cat -n module.c
+ <span class="dv">1</span>  <span class="co">//#include &quot;module.h&quot;</span>
+ <span class="dv">2</span>
+ <span class="dv">3</span>  <span class="dt">int</span> foo(<span class="dt">int</span> a, <span class="dt">int</span> b)
+ <span class="dv">4</span>  {
+ <span class="dv">5</span>      <span class="kw">return</span> a/b;
+ <span class="dv">6</span>  }</code></pre>
+<pre class="sourceCode bash"><code class="sourceCode bash">$ <span class="kw">gcc</span> -c -o module.o -Wall -Wextra -Wmissing-declarations module.c
+<span class="kw">module.c</span>:4: warning: no previous declaration for ‘foo’</code></pre>
+<p>See? GCC did all the dirty works for you!</p>
+<h2 id="reference">Reference:</h2>
+<ul>
+<li><a href="./posts/2013-02-26-compiler-warnings-are-your-friends.html">Compiler Warnings are Your Friends</a></li>
+</ul>
+		
+		</p>
+	</li>
+	
+	<li>
+		<a href="./posts/2013-04-25-printf-llu.html">Format Types Mismatch in printf/fprintf</a> - April 25, 2013
+		<p>
+		
+			<p>This is one blog of the <a href="./posts/2013-02-26-compiler-warnings-are-your-friends.html">Compiler Warnings are Your Friends</a> series.</p>
+<h2 id="demonstrate-code">Demonstrate Code</h2>
+<p>One of my colleagues met a crash issue of his code, so he consulted me, below code are simplified for the key point only.</p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="ot">#include &lt;stdio.h&gt;</span>
+
+<span class="dt">int</span> main() {
+    <span class="dt">unsigned</span> <span class="dt">long</span> <span class="dt">long</span> num = 4294967299ull; <span class="co">/*(0x100000003)*/</span>
+    <span class="dt">unsigned</span> <span class="dt">int</span> a = <span class="dv">5</span>;
+    <span class="dt">const</span> <span class="dt">char</span>* pa = <span class="st">&quot;pa&quot;</span>;
+
+    printf(<span class="st">&quot;size:%d,llu:%llu</span><span class="ch">\n</span><span class="st">&quot;</span>, <span class="kw">sizeof</span>(num), num);
+    printf(<span class="st">&quot;a:%d,num:%lu,pa:%p</span><span class="ch">\n</span><span class="st">&quot;</span>, a, num, pa);
+    printf(<span class="st">&quot;a:%d,num:%lu,pa:%s</span><span class="ch">\n</span><span class="st">&quot;</span>, a, num, pa);
+
+    <span class="kw">return</span> <span class="dv">0</span>;
+}</code></pre>
+<h2 id="the-compiler-warning">The Compiler Warning</h2>
+<p>Let’s compile the above code:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash">$ <span class="kw">gcc</span> -o llu llu.c
+<span class="kw">llu.c</span>:9:5: warning: format ‘%lu’ expects argument of type ‘long unsigned int’,
+<span class="kw">but</span> argument 3 has type ‘long long unsigned int’ [-Wformat]</code></pre>
+<p>It means we provided a <code>long long unsigned int</code> argument, but use “%lu” to format it in printf. Nevertheless, the build is successful. (<em>In fact, there are more than one mistake within above code, and you’ll get more warnings if compiled it with a modern compiler, e.g. use <code>%d</code> to print the result of sizeof, which is typed as <code>size_t</code>. But, let’s focuse on the <code>llu</code> issue first</em>);</p>
+<h3 id="result-of-running-it">Result of Running it</h3>
+<p>On a x86 (little-endian) PC, I got (<em>Probably you’ll get different result on a 64bit machine</em>):</p>
+<pre class="sourceCode bash"><code class="sourceCode bash">$ <span class="kw">./llu</span>
+<span class="kw">size</span>:8,llu:4294967299
+<span class="kw">a</span>:5,num:3,pa:0x1
+<span class="kw">/bin</span>/bash: <span class="kw">line</span> 1:  3440
+<span class="kw">Segmentation</span> fault      (core dumped) <span class="kw">./llu</span></code></pre>
+<p>As you can see, the value of num can be printed correctly by “%llu” in the first printf, but in second printf its value changed to 3 instead of 4294967299, and the followed <code>pa</code> got a value <code>0x1</code> (obviously it’s a wrong pointer value). Even worse, the third printf caused a ‘Segmentation fault’.</p>
+<h2 id="analysis">Analysis</h2>
+<p>In the second <code>printf</code>, we use “%lu” in the format string, so <code>printf</code> grabbed 4 low bytes (<code>0x00000003</code>) from <code>num</code>, i.e. it was truncated, hence we got “num:3”. Then “%p” grabbed the left 4 high bytes of num (<code>0x00000001</code>), printed it as a pointer value, so we got “pa:0x1”.</p>
+<p>In the third <code>printf</code>, the story is similar, but <code>printf</code> tried to dereference the invalid pointer address (i.e. “0x1”) when it met “%s”, so the program crashed.</p>
+<p>The stack frame of printf:</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Variable</th>
+<th align="right">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">“pa” (4 bytes)</td>
+<td align="right">a pointer</td>
+</tr>
+<tr class="even">
+<td align="left">“num” (8 bytes)</td>
+<td align="right">0x0000000100000003</td>
+</tr>
+<tr class="odd">
+<td align="left">“a” (4 bytes)</td>
+<td align="right">0x00000005</td>
+</tr>
+</tbody>
+</table>
+<p>Interpreted incorrectly as:</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Interpration</th>
+<th align="right">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left"><em>ignored</em> (4 bytes)</td>
+<td align="right">pointer to pa </td>
+</tr>
+<tr class="even">
+<td align="left">“%p” (4 bytes)</td>
+<td align="right">pa : 0x00000001</td>
+</tr>
+<tr class="odd">
+<td align="left">“%lu” (4 bytes)</td>
+<td align="right">num : 0x00000003</td>
+</tr>
+<tr class="even">
+<td align="left">“%d” (4 bytes)</td>
+<td align="right">a : 0x00000005</td>
+</tr>
+</tbody>
+</table>
+<h2 id="solution-and-suggestion">Solution and Suggestion</h2>
+<p>Firstly, as I mentioned in <strong>Compiler Warnings are Your Friends</strong>, you should fix all the compiler warnings, and turn on “-Werror” finally. Then this kind of bug would never leak to other people.</p>
+<p>And the solution is very simple, just use correct length modifiers in format instrcutions: <code>hh, h, l, ll</code>, etc.</p>
+<p>If you’re working on platform which has <code>&lt;inttypes.h&gt;</code>, it’s better to make it cross-platform by using macros it provides:</p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="ot">#include &lt;inttypes.h&gt;</span>
+
+<span class="dt">int64_t</span> it;
+<span class="dt">uint64_t</span> ut;
+
+printf(<span class="st">&quot;%&quot;</span> PRId64 <span class="st">&quot;n&quot;</span>, it);
+printf(<span class="st">&quot;%&quot;</span> PRIu64 <span class="st">&quot;n&quot;</span>, ut);</code></pre>
+<p>Please find more details about <code>inttypes.h</code> at <a href="http://stackoverflow.com/questions/6299323/good-introduction-to-inttypes-h">stackoverflow</a>.</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="./posts/2013-02-26-compiler-warnings-are-your-friends.html">Compiler Warnings are Your Friends</a></li>
+</ul>
+		
+		</p>
+	</li>
+	
+	<li>
+		<a href="./posts/2013-02-26-compiler-warnings-are-your-friends.html">Compiler Warnings are Your Friends</a> - February 26, 2013
+		<p>
+		
+			<h2 id="origin">Origin</h2>
+<p>One of my colleagues has posted a blog talking about a bug related with a GCC option <code>-fstrict-aliasing</code>, and someone pointed out that the compiler has already warned them about the bug in the compiling log, but that team just ignored the warning.</p>
+<p>Then you may suggest all of us should treat compiling warnings seriously, it couldn’t turn into a bug, waste lots of time of many colleagues.</p>
+<p>So why not turn on <code>-Werror</code> into compile flags always, then build would fail instantly if there are warnings reported, then engineers won’t ignore them unconsciously? In fact, many components in our system has already took this action.</p>
+<h2 id="reasons-for-havent-doing-so">Reasons for Haven’t Doing So</h2>
+<p>But why not all of C/C++ components using <code>-Werror</code>? I guess:</p>
+<ol style="list-style-type: decimal">
+<li>They’re legacy code, and there are too many warnings in their components, if they turn on <code>-Werror</code>, the CI build would fail for a long time and the team would got blamed by many angry colleagues.</li>
+<li>Some compiler warnings are really not problems, or not worth to fix them all.</li>
+</ol>
+<h2 id="solution-for-1">Solution for #1</h2>
+<ol style="list-style-type: decimal">
+<li>when you have time, or feel bored, check out a clean copy of the code.</li>
+<li>turn on <code>-Werror</code>, compile;</li>
+<li>fix some of the warnings reported by compiler in a time-box;</li>
+<li>turn off <code>-Werror</code>, check-in those fix;</li>
+<li>repeat 1-4 until all warnings are fixed, then turn on the flag permanently.</li>
+</ol>
+<h2 id="solution-for-2">Solution for #2</h2>
+<p>Before doing below actions, discuss with other experts and be 100% sure there are no solutions for the warnings you’re dealing with, in my experience that’s not the case in most of times. But if you’re really on bad luck, try below:</p>
+<ol style="list-style-type: decimal">
+<li>Turn off some specific compile options by <code>-Wno-&lt;xxx&gt;</code>, e.g. <code>-Wno-write-strings, -Wno-long-long, -Wno-unused-value</code></li>
+<li>Split code into different groups, configure different compile flags for different groups of code. e.g. use “<code>-Wall -Wextra -Wno-write-strings</code>” for C source code, use “<code>-Wall -Wextra -pedantic-errors</code>” for C++ source code, use <code>-Wpermissive</code> for the source code generated by some code generating scripts without self-discipline. Usually this kind of configuration requires makefile support.</li>
+</ol>
+<p>But why should I care those dirty secrets of compilers? because:</p>
+<h2 id="compiler-warnings-are-your-friends">Compiler Warnings are Your Friends</h2>
+<ul>
+<li>Catch Bugs Before Testing</li>
+</ul>
+<p>For example we have below code:</p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="kw">if</span> (queue_handle = msg_queue_handle) {
+    printf(<span class="st">&quot;message queue is empty.</span><span class="ch">\n</span><span class="st">&quot;</span>);
+}</code></pre>
+<p>Compiler can help you to catch the annoying bug:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">src</span>/demo.c:<span class="kw">247</span>:19: warning: using the result of an assignment as a condition without parentheses [-Wparentheses]
+    <span class="kw">if</span> <span class="kw">(queue_handle</span> = msg_queue_handle<span class="kw">)</span>
+        <span class="kw">~~~~~~~~~~~~~</span>^<span class="kw">~~~~~~~~~~~~~~~~~</span>
+<span class="kw">src</span>/demo.c:<span class="kw">247</span>:19: note: place parentheses around the assignment to silence this warning
+    <span class="kw">if</span> <span class="kw">(queue_handle</span> = msg_queue_handle<span class="kw">)</span>
+                     ^
+        <span class="kw">(</span>                              <span class="kw">)</span></code></pre>
+<p>below code is another real-life example:</p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="kw">if</span> (tmp_value != (SUM_OF_VALUES - last_value));
+{
+    <span class="co">//code here...</span>
+}</code></pre>
+<p>Can you find the bug at first glance? Probably not, but the compiler never get drunk:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">..</span>/uglified_file_name.c:<span class="kw">161</span>:52: error: if statement has empty body [-Werror,-Wempty-body]
+<span class="kw">if</span> <span class="kw">(tmp_value</span> != (SUM_OF_VALUES - last_value<span class="kw">)</span>);
+                                             ^</code></pre>
+<ul>
+<li>Catch Bugs that are Hard to Find Even in Testing</li>
+</ul>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="kw">if</span> (TYPE_T_VIP == type) {
+    status = get_customer_name(name, parent_name);
+    <span class="kw">if</span> (status != OK) {
+        <span class="kw">return</span> status;
+    }
+
+    <span class="co">// bunch of ugly code here...</span>
+
+    status = decode_customer_info(parent_name, &amp;parent_id, &amp;type);
+    <span class="kw">if</span> (status != OK) {
+        log_error(
+            MODULE_CUSTOMER,
+            __func__,
+            <span class="st">&quot;get parent id of %s failed, status 0x%x&quot;</span>,
+            status
+        );
+
+        <span class="kw">return</span> status;
+    }
+}
+
+acquireLock(customer_entry_lock);
+status = update_customer(customer_db,
+    parent_id,
+    &amp;db_customer_profile,
+    &amp;db_vip_profile);
+releaseLock(customer_entry_lock);</code></pre>
+<p>Like above code, they appears in a very long function, bugs are growing very easily in complex logic, and again compiler can find it for you:</p>
+<pre class="sourceCode c"><code class="sourceCode c">../customers.c:<span class="dv">556</span>:<span class="dv">11</span>: error: variable 'parent_id' is used uninitialized whenever '<span class="kw">if</span>' condition is false
+      [-Werror,-Wsometimes-uninitialized]
+      <span class="kw">if</span> (TYPE_T_VIP == type) {
+          ^~~~~~~~~~~~~~~~~~</code></pre>
+<p>If the first if-statement evaluated to false, then the variable <code>parent_id</code> would never be initialized by <code>decode_customer_info</code>, so it’s uninitialized when used in <code>update_customer(...)</code>.</p>
+<h2 id="summary">Summary</h2>
+<ul>
+<li>Compiler warnings are helpful, combined use with <code>-Werror</code> can prevent bugs at the very beginning.</li>
+<li>Some warnings are annoying, but you have ways to suppress them.</li>
+</ul>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="http://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html">GCC Warning Options</a></li>
+</ul>
+<h2 id="backwards-reference">Backwards Reference</h2>
+<ul>
+<li><a href="./posts/2013-01-13-foo-and-foo-void.html">What’s the difference between ‘foo()’ and ‘foo(void)’?</a></li>
+<li><a href="./posts/2013-04-25-printf-llu.html">Format Types Mismatch in printf/fprintf</a></li>
+<li><a href="2014-02-24-include-header.html">Do I need to include .h file in .c with same name?</a></li>
+<li><a href="./posts/2014-09-01-code-optimization.html">On Code Optimization</a></li>
+</ul>
+		
+		</p>
+	</li>
+	
+	<li>
+		<a href="./posts/2013-01-13-foo-and-foo-void.html">What's the difference between `foo(void)` and `foo(void)`?</a> - January 13, 2013
+		<p>
+		
+			<div class="figure">
+<img src="http://imgs.xkcd.com/comics/debugger.png" />
+
+</div>
+<h2 id="problem">Problem</h2>
+<p>Let’s begin with a little bit of C code:</p>
+<pre class="sourceCode c"><code class="sourceCode c"><span class="co">//void.h</span>
+<span class="dt">int</span> foo();
+
+<span class="co">//void.c</span>
+<span class="dt">int</span> foo(<span class="dt">int</span> x)
+{
+    <span class="kw">return</span> x<span class="dv">+1</span>;
+}
+
+<span class="co">//main.c</span>
+<span class="ot">#include &lt;stdio.h&gt;</span>
+<span class="ot">#include &quot;void.h&quot;</span>
+
+<span class="dt">int</span> main()
+{
+    printf(<span class="st">&quot;foo:%d</span><span class="ch">\n</span><span class="st">&quot;</span>, foo());
+    <span class="kw">return</span> <span class="dv">0</span>;
+}</code></pre>
+<p>Use below command to compile and link them together:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">gcc</span> *.c -o void -Wall -Wextra</code></pre>
+<p>Which result do you expect?</p>
+<ol style="list-style-type: decimal">
+<li>gcc warns about unmatched prototypes of ‘foo’;</li>
+<li>compilation is OK, but run the ‘./void’ results into a ‘segmentation fault’;</li>
+<li>compilation is OK, but run the ‘./void’ prints a random value.</li>
+</ol>
+<blockquote>
+<p>. . . . . . . .</p>
+</blockquote>
+<p>The result is the 3rd one in my environment, gcc gives no warnings on this piece of code, the result is random, but it works without any segmentation fault.</p>
+<h2 id="analysis">Analysis</h2>
+<p>The mumbo-jumbo behind it is how gcc inteprete the decleraration in <code>void.h</code>, as ANSI C mentioned:</p>
+<blockquote>
+<p>The empty list in a function declarator that is not part of a function definition specifies that no information about the number or types of the parameters is supplied.</p>
+</blockquote>
+<p>As it implies, the declaration <code>int foo();</code> in <code>foo.h</code> <strong>doesn’t mean <code>foo</code> has no parameter, it means not specified</strong>. Hence, gcc accepts it because it doesn’t conflict with <code>int foo(int x)</code> (though the result is unexpected).</p>
+<p>The story can’t endup here, next question should be how to express a funtion doesn’t have any parameter?</p>
+<p>Let’s refer to ANSI C paper again:</p>
+<blockquote>
+<p>The special case of void as the only item in the list specifies that the function has no parameters.</p>
+</blockquote>
+<p>No surperise what the above code actually saying is <code>int foo(void);</code>.</p>
+<h2 id="solution">Solution</h2>
+<p>But you can imagine if this scenario happened it might cost an engineer lots of time to debug. How to avoid such boring things? The GCC compile option <code>-Wstrict-prototypes</code> is a simple and elegent method you’re looking for:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">gcc</span> *.c -o void -Wall -Wextra -Wstrict-prototypes</code></pre>
+<p>now gcc generates warnings like:</p>
+<blockquote>
+<p>void.h:1: warning: function declaration isn’t a prototype</p>
+</blockquote>
+<p>It helps you to find all those potential issues.</p>
+<h2 id="note">Note</h2>
+<ul>
+<li>C++ works on strict prototypes by default, so <code>int foo();</code> has the same meaning with <code>int foo(void);</code> in C++;</li>
+<li>Some compilers don’t generate any warning in my test, please find documents here if you want to know more.</li>
+<li>Check out compiling tactics at <a href="./posts/2013-02-26-compiler-warnings-are-your-friends.html">Compiler Warnings are Your Friends</a>.</li>
+</ul>
+<p><em>Many thanks to <a href="http://xkcd.com">xkcd.com</a> for the comic at begin, along with many other instresting comics, and its kind <a href="https://xkcd.com/license.html">license</a>.</em></p>
+		
+		</p>
+	</li>
+	
+</ul>
+
+
+
+<p>…or you can find more in the <a href="./archive.html">archives</a>.</p>
+
+        </div>
+        <div id="footer">
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+        </div>
+    </body>
+</html>
