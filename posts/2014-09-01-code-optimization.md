@@ -29,9 +29,9 @@ BOOLEAN editName(char *name)
 }
 ```
 
-Let's compile it by gcc on a x86 platform:
+Let's compile it by gcc on a x86 platform (in fact, I'm using [gccbolt](https://gcc.godbolt.org/), on which you can try different platforms):
 
-``` asm
+``` nasm
 editName(char*):
 	pushq	%rbp
 	movq	%rsp, %rbp
@@ -60,7 +60,7 @@ BOOLEAN editNameWithoutBranch(char *name)
 
 Let's check the result on the same platform:
 
-``` asm
+``` nasm
 editNameWithoutBranch(char*):
 	pushq	%rbp
 	movq	%rsp, %rbp
@@ -79,7 +79,7 @@ So, which version would be better in performance? It depends, different platform
 
 Now, to get the most out of compiler intelligence, let's try `-O2` for above code, I got:
 
-``` asm
+``` nasm
 editName(char*):
 	cmpb	$0, (%rdi); compare name[0] with '\0'
 	setne	%al
@@ -109,7 +109,7 @@ bool editNameWithBoolean(char *name)
 
 Compile it with `gcc -std=c99 -O2`:
 
-``` asm
+``` nasm
 editNameWithBoolean(char*):
 	cmpb	$0, (%rdi)
 	setne	%al
